@@ -1,0 +1,28 @@
+{
+  "name": "joist",
+  "version": "0.0.1",
+  "description": "A GraphQL boilerplate using grapql-modules and express",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate-refresh": "knex migrate:rollback && knex migrate:latest && knex seed:run"
+  },
+  "keywords": ["graphql"],
+  "author": "mark.dekin@gmail.com",
+  "license": "ISC",
+  "dependencies": {
+    "@graphql-modules/core": "^0.7.13",
+    "bcrypt": "^3.0.6",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "express-graphql": "^0.9.0",
+    "faker": "^4.1.0",
+    "graphql": "^14.5.8",
+    "graphql-import-node": "0.0.4",
+    "graphql-tag": "^2.10.1",
+    "jsonwebtoken": "^8.5.1",
+    "knex": "^0.19.5",
+    "mysql": "^2.17.1",
+    "reflect-metadata": "^0.1.13"
+  }
+}

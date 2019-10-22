@@ -1,0 +1,14 @@
+type Query {
+  login(uid: String!, password: String!): AuthToken
+  me: User
+}
+
+type AuthToken {
+  token: String!
+}
+
+type User {
+  id: ID!
+  email: String!
+  username: String!
+}
