@@ -7,7 +7,7 @@ exports.up = async knex => {
     table.string('password').notNullable()
     table.string('username').notNullable()
     table.timestamps(false, true)
-    table.datetime('deleted_at').defaultTo(knex.fn.now())
+    table.datetime('deleted_at')
   })
 }
 
