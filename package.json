@@ -7,7 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate-refresh": "knex migrate:rollback && knex migrate:latest && knex seed:run"
   },
-  "keywords": ["graphql"],
+  "keywords": [
+    "graphql"
+  ],
   "author": "mark.dekin@gmail.com",
   "license": "ISC",
   "dependencies": {
