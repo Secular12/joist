@@ -1,11 +1,14 @@
 const { Injectable } = require('@graphql-modules/di')
+const jwt = require('jsonwebtoken')
 
 class AuthProvider {
-  getCurrentUser (request, env) {
-    const authToken = request.headers.authorization
+  getCurrentUser ({ headers }, env) {
+    const isAuthToken = headers.authorization && headers.authorization.startsWith('Bearer ')
     let currentUser
 
-    if (authToken) {
+    if (isAuthToken) {
+      const authToken = headers.authorization.split('Bearer ')[1]
+
       jwt.verify(authToken, env.app.secret, async (error, { userId: id }) => {
         if (!error) {
           const user = await db.select().where('id', id).from('users')
