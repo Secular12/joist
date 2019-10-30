@@ -1,6 +1,5 @@
 exports.up = async knex => {
   await knex.schema.createTable('permissions', table => {
-    table.primary(['action', 'scope', 'module'])
     table.string('action').notNullable()
     table
       .string('module')
@@ -15,6 +14,7 @@ exports.up = async knex => {
       .inTable('scopes')
     table.timestamps(false, true)
     table.datetime('deleted_at')
+    table.primary(['action', 'scope', 'module'])
   })
 }
 
