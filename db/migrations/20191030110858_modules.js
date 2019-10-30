@@ -1,7 +1,6 @@
 exports.up = async knex => {
   await knex.schema.createTable('modules', table => {
-    table.increments()
-    table.string('name').notNullable()
+    table.string('name').notNullable().primary()
   })
 }
 
