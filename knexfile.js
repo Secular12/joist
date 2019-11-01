@@ -7,8 +7,6 @@ const { db: {
   user
 } } = require('./config')
 
-console.log(database)
-
 module.exports = {
   client,
   connection: {
