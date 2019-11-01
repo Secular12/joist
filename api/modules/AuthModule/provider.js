@@ -1,8 +1,10 @@
+const db = require('../../../db')
+const env = require('../../../config')
 const { Injectable } = require('@graphql-modules/di')
 const jwt = require('jsonwebtoken')
 
 class AuthProvider {
-  getCurrentUser ({ headers }, env) {
+  getCurrentUser ({ headers }) {
     const isAuthToken = headers.authorization && headers.authorization.startsWith('Bearer ')
     let currentUser
 
