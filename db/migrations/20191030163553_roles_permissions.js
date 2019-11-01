@@ -24,7 +24,7 @@ exports.up = async knex => {
     table
       .foreign(['action', 'scope', 'module'])
       .references(['action', 'scope', 'module'])
-      .onTable('permissions')
+      .inTable('permissions')
   })
 }
 
