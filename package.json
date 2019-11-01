@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "seed-data": "knex seed:run --specific testData.js",
     "migrate-refresh": "knex migrate:rollback && knex migrate:latest && knex seed:run"
   },
   "keywords": [
