@@ -4,13 +4,13 @@ module.exports = async knex => {
       {
         action: 'create',
         module: 'permissions',
-        name: 'create a new module, permission, or scope',
+        name: 'create new modules, permissions, or scopes',
         scope: 'all'
       },
       {
         action: 'delete',
         module: 'permissions',
-        name: 'delete a module, permission, or scope',
+        name: 'delete any module, permission, or scope',
         scope: 'all'
       },
       {
@@ -28,19 +28,19 @@ module.exports = async knex => {
       {
         action: 'update',
         module: 'permissions',
-        name: 'update a module, permission, or scope',
+        name: 'update any module, permission, or scope',
         scope: 'all'
       },
       {
         action: 'create',
         module: 'roles',
-        name: 'create a new role',
+        name: 'create new roles',
         scope: 'all'
       },
       {
         action: 'delete',
         module: 'roles',
-        name: 'delete a role',
+        name: 'delete any role',
         scope: 'all'
       },
       {
@@ -58,7 +58,7 @@ module.exports = async knex => {
       {
         action: 'update',
         module: 'roles',
-        name: 'update a role',
+        name: 'update any role',
         scope: 'all'
       },
       {
