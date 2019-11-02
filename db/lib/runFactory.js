@@ -1,6 +1,6 @@
 const runFactory = (factory, times = 1, accumulator = []) => {
-  if (times > 0) {
-    return runFactory(factory, times - 1, [...accumulator, factory()])
+  if (accumulator.length < times) {
+    return runFactory(factory, times, [...accumulator, factory(accumulator.length + 1)])
   }
   return accumulator
 }
