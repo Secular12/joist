@@ -1,9 +1,24 @@
+const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 
 module.exports = {
   Query: {
-    login (root, args, context) {
-      const token = jwt.sign({ userId: 1 }, context.env.app.secret, { expiresIn: '1h' })
+    async login (root, args, context) {
+      const user = await context.db
+        .select('id', 'password')
+        .where('email', args.uid)
+        .orWhere('username', args.uid)
+        .from('users')
+        .first()
+
+      if (!user) throw new Error('Provided username or email does not match our records.')
+
+      const passwordMatch = await bcrypt.compare(args.password, user.password)
+
+      if (!passwordMatch) throw new Error('Incorrect password.')
+
+      const token = jwt.sign({ userId: user.id }, context.env.auth.secret, { expiresIn: context.env.auth.jwtExpiration })
+
       return { token }
     },
     me (root, args, context) {

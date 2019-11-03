@@ -1,5 +1,5 @@
 const db = require('../../../db')
-const env = require('../../../config')
+const { auth: { secret } } = require('../../../config')
 const { Injectable } = require('@graphql-modules/di')
 const jwt = require('jsonwebtoken')
 const { uniq } = require('lodash')
@@ -12,7 +12,7 @@ class AuthProvider {
     if (isAuthToken) {
       const authToken = headers.authorization.split('Bearer ')[1]
 
-      await jwt.verify(authToken, env.app.secret, async (error, payload) => {
+      await jwt.verify(authToken, secret, async (error, payload) => {
         if (error) throw new Error(error)
 
         const { userId: id } = payload
