@@ -5,7 +5,7 @@ const db = require('../../../db')
 
 module.exports = new GraphQLModule({
   async context (session, _, { injector }) {
-    const currentUser = injector.get(AuthProvider).getCurrentUser(session)
+    const currentUser = await injector.get(AuthProvider).getCurrentUser(session)
 
     return {
       currentUser,
