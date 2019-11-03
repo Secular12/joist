@@ -15,6 +15,6 @@ module.exports = new GraphQLModule({
   ],
   resolvers,
   resolversComposition: {
-    'Query.users': [hasPermission('test')]
+    'Query.users': [hasPermission('read', 'all', 'users')]
   }
 })
