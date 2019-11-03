@@ -3,8 +3,8 @@ const jwt = require('jsonwebtoken')
 
 module.exports = {
   Query: {
-    async login (root, args, context) {
-      const user = await context.db
+    async login (root, args, { db, env: { auth: { jwtExpiration, secret } } }) {
+      const user = await db
         .select('id', 'password')
         .where('email', args.uid)
         .orWhere('username', args.uid)
@@ -17,7 +17,7 @@ module.exports = {
 
       if (!passwordMatch) throw new Error('Incorrect password.')
 
-      const token = jwt.sign({ userId: user.id }, context.env.auth.secret, { expiresIn: context.env.auth.jwtExpiration })
+      const token = jwt.sign({ userId: user.id }, secret, { expiresIn: jwtExpiration })
 
       return { token }
     },
