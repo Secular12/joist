@@ -1,5 +1,5 @@
 const faker = require('faker')
-const runFactory = require('../lib/runFactory')
+const runFactory = require('../../lib/runFactory')
 
 const userFactory = () => ({
   email: faker.internet.email(),
@@ -9,8 +9,7 @@ const userFactory = () => ({
   username: faker.internet.userName()
 })
 
-exports.seed = async knex => {
-  // Deletes ALL existing entries
+module.exports = async knex => {
   await knex('users')
     .insert([
       {
