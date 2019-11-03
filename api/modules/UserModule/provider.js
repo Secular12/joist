@@ -1,22 +1,13 @@
+const db = require('../../../db')
 const { Injectable } = require('@graphql-modules/di')
 
 class UserProvider {
-  constructor () {
-    this.users = [
-      {
-        _id: '1',
-        email: 'mark.dekin@gmail.com',
-        username: 'mdekin'
-      }
-    ]
+  async getUsers () {
+    return db.select().from('users')
   }
 
-  getUsers () {
-    return this.users
-  }
-
-  getUserById (id) {
-    return this.users.find(user => user._id === id)
+  async getUserById (id) {
+    return db.select().from('users').where('id', id).first()
   }
 }
 
