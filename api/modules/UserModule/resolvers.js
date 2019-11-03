@@ -2,10 +2,10 @@ const UserProvider = require('./provider.js')
 
 module.exports = {
   Query: {
-    users (root, args, { injector }) {
+    async users (root, args, { injector }) {
       return injector.get(UserProvider).getUsers()
     },
-    user (root, { id }, { injector }) {
+    async user (root, { id }, { injector }) {
       return injector.get(UserProvider).getUserById(id)
     }
   }
