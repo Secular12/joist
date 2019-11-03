@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken')
 module.exports = {
   Query: {
     login (root, args, context) {
-      const token = jwt.sign({ userId: 1 }, context.env.AUTH_SECRET, { expiresIn: '1h' })
+      const token = jwt.sign({ userId: 1 }, context.env.app.secret, { expiresIn: '1h' })
       return { token }
     },
     me (root, args, context) {
