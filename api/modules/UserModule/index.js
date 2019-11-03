@@ -7,7 +7,7 @@ const UserProvider = require('./provider.js')
 const hasPermission = require('../../compositions/hasPermission')
 
 module.exports = new GraphQLModule({
-  imports: [ AuthModule ],
+  imports: [AuthModule],
   name: 'User',
   typeDefs,
   providers: [
