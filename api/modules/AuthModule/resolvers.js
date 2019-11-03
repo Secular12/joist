@@ -12,8 +12,11 @@ module.exports = {
   },
   // Computed
   User: {
-    id (user, _, context) {
-      return user._id
+    firstName (user, _, context) {
+      return user.first_name
+    },
+    lastName (user, _, context) {
+      return user.last_name
     }
   }
 }

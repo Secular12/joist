@@ -10,5 +10,7 @@ type AuthToken {
 type User {
   id: ID!
   email: String!
+  firstName: String!
+  lastName: String!
   username: String!
 }
