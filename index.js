@@ -4,11 +4,16 @@ require('reflect-metadata')
 require('dotenv').config()
 
 const { app: { graphiql, host, path: apiPath, port } } = require('./config')
+const dayjs = require('dayjs')
+const utc = require('dayjs/plugin/utc')
 const express = require('express')
 const graphqlHTTP = require('express-graphql')
 const { GraphQLModule } = require('@graphql-modules/core')
 const importModules = require('./lib/importModules')
 const { join } = require('path')
+
+// apply utc plugin to dayjs
+dayjs.extend(utc)
 
 const app = express()
 

@@ -9,8 +9,10 @@ module.exports = new GraphQLModule({
 
     return {
       currentUser,
+      db,
       env,
-      db
+      ip: session.ip,
+      userAgent: session.headers['user-agent']
     }
   },
   providers: [
