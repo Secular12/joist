@@ -1,10 +1,14 @@
 type Query {
-  login(uid: String!, password: String!): AuthToken
+  login(uid: String!, password: String!): AuthToken!
   me: User
+  tokenRefresh(refreshToken: String!): AuthToken!
 }
 
 type AuthToken {
+  refreshToken: String!
+  refreshTokenExpiration: String!
   token: String!
+  tokenExpiration: String!
 }
 
 type User {
