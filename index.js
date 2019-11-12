@@ -28,6 +28,15 @@ const { schema } = AppModule
 
 app.use(apiPath, graphqlHTTP({
   graphiql,
+  customFormatErrorFn (error) {
+    return {
+      code: (error.originalError && error.originalError.code) || 'ER_GRAPHQL',
+      locations: error.locations,
+      message: error.message,
+      path: error.path,
+      status: (error.originalError && error.originalError.status) || 400
+    }
+  },
   schema
 }))
 
