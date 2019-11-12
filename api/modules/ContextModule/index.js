@@ -2,6 +2,7 @@ const AuthProvider = require('../AuthModule/provider')
 const { GraphQLModule } = require('@graphql-modules/core')
 const env = require('../../../config')
 const db = require('../../../db')
+const ScalarModule = require('../ScalarModule')
 
 module.exports = new GraphQLModule({
   async context (session, _, { injector }) {
@@ -15,6 +16,7 @@ module.exports = new GraphQLModule({
       userAgent: session.headers['user-agent']
     }
   },
+  imports: [ScalarModule],
   providers: [
     AuthProvider
   ]

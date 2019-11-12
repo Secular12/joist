@@ -1,27 +1,42 @@
+const AppError = require('../../errors/AppError')
 const bcrypt = require('bcrypt')
+const DatabaseError = require('../../errors/DatabaseError')
 const dayjs = require('dayjs')
 const jwt = require('jsonwebtoken')
+const UnauthorizedError = require('../../errors/UnauthorizedError')
 const uuidv4 = require('uuid/v4')
 
 module.exports = {
-  Query: {
-    async login (root, args, { db, env: { auth }, ip, userAgent }) {
+  Mutation: {
+    async login (root, { input: args }, { db, env: { auth }, ip, userAgent }) {
       // Get user by uid
       const user = await db
         .select('id', 'password')
+        .from('users')
         .where('email', args.uid)
         .orWhere('username', args.uid)
-        .from('users')
         .first()
 
       // Throw error if cannot find user by uid
-      if (!user) throw new Error('Username/email or password is not correct.')
+      if (!user) throw new AppError(400, 'ER_LOGIN', 'Username/email or password is not correct')
+
+      // get new user validation token, in case one exists
+      const newUserToken = await db
+        .select('token')
+        .from('tokens')
+        .where({ type: 'new-user-validation', user_id: user.id })
+        .first()
+
+      // Throw error if there is a new user validation token
+      if (newUserToken) {
+        throw new AppError(401, 'ER_UNVERIFIED', 'This account has not been verified')
+      }
 
       // match password given to the encrypted password of the user in the database
       const passwordMatch = await bcrypt.compare(args.password, user.password)
 
       // Throw error if passwords do not match
-      if (!passwordMatch) throw new Error('Username/email or password is not correct.')
+      if (!passwordMatch) throw new AppError(400, 'ER_LOGIN', 'Username/email or password is not correct')
 
       // get JTW and refresh token expiration datetimes
       const now = dayjs().utc()
@@ -33,7 +48,7 @@ module.exports = {
 
       // delete other unrevoked refresh tokens for the user with the same ip and user-agent
       await db('tokens')
-        .where({ ip, user_agent: userAgent, user_id: user.id })
+        .where({ ip, type: 'refresh', user_agent: userAgent, user_id: user.id })
         .whereNull('deleted_at')
         .del()
 
@@ -55,11 +70,89 @@ module.exports = {
       return { refreshToken, refreshTokenExpiration, token, tokenExpiration }
     },
 
-    me (root, args, context) {
-      return context.currentUser
+    async reverifyNewUser (root, { input }, { db, env: { auth } }) {
+      const user = await db
+        .select('id')
+        .from('users')
+        .where({ email: input.email })
+        .first()
+
+      if (!user) {
+        throw new AppError(400, 'ER_ACCOUNT_NOT_FOUND', 'There is no user found with the provided email')
+      }
+
+      const currentToken = await db
+        .select('token')
+        .form('tokens')
+        .where({ type: 'new-user-verification', user_id: user.id })
+        .first()
+
+      if (!currentToken) {
+        throw new AppError(400, 'ER_ALREADY_VERIFIED', 'A user with this email has already been verified')
+      }
+
+      await db
+        .form('tokens')
+        .where({ type: 'new-user-verification', user_id: user.id })
+        .del()
+
+      const newUserVerificationToken = uuidv4()
+
+      await db('tokens')
+        .insert({
+          expires_at: dayjs()
+            .utc()
+            .add(auth.verificationExpirationAmount, auth.verificationExpirationUnit)
+            .format('YYYY-MM-DD HH:mm:ss'),
+          token: newUserVerificationToken,
+          type: 'new-user-validation',
+          user_id: user.id
+        })
+
+      // @TODO: Send Reverification email.
+
+      return { message: 'Reverification email sent!' }
     },
 
-    async tokenRefresh (root, args, { db, env: { auth }, ip, userAgent }) {
+    async signup (root, { input }, { db, env: { auth } }) {
+      if (input.password !== input.confirmPassword) {
+        throw new AppError(400, 'ER_MATCH_PASSWORDS', 'password and confirm password do not match')
+      }
+
+      let newUser
+
+      try {
+        newUser = await db('users')
+          .insert({
+            email: input.email,
+            first_name: input.firstName,
+            last_name: input.lastName,
+            password: await bcrypt.hash(input.password, auth.saltRounds),
+            username: input.username
+          })
+      } catch (error) {
+        throw new DatabaseError(400, error)
+      }
+
+      const newUserVerificationToken = uuidv4()
+
+      await db('tokens')
+        .insert({
+          expires_at: dayjs()
+            .utc()
+            .add(auth.verificationExpirationAmount, auth.verificationExpirationUnit)
+            .format('YYYY-MM-DD HH:mm:ss'),
+          token: newUserVerificationToken,
+          type: 'new-user-validation',
+          user_id: newUser[0]
+        })
+
+      // @TODO: Send verification email
+
+      return { message: 'Signup successful!' }
+    },
+
+    async tokenRefresh (root, { input: args }, { db, env: { auth }, ip, userAgent }) {
       // set current datetime and set a formatted version for later use
       const now = dayjs().utc()
       const nowFormatted = now.format('YYYY-MM-DD HH:mm:ss')
@@ -72,7 +165,7 @@ module.exports = {
         .first()
 
       // Throw error if refresh token doesn't exist
-      if (!refreshToken) throw new Error('The provided refresh token is either revoked, expired, or incorrect.')
+      if (!refreshToken) throw new UnauthorizedError('The provided refresh token is either revoked, expired, or incorrect.')
 
       // deconstruct properties of the refresh token
       const {
@@ -86,7 +179,7 @@ module.exports = {
       if (expiresAt < nowFormatted) {
         await db('tokens').where('token', refreshToken.token).del()
 
-        throw new Error('The provided refresh token is either revoked, expired, or incorrect.')
+        throw new UnauthorizedError('The provided refresh token is either revoked, expired, or incorrect.')
       }
 
       // revoke (soft delete) token if the token's ip and user agent do not match the current one
@@ -94,7 +187,7 @@ module.exports = {
       if (ip !== tokenIp || userAgent !== tokenUserAgent) {
         await db('tokens').update({ deleted_at: nowFormatted }).where('token', refreshToken.token)
 
-        throw new Error('The provided refresh token is either revoked, expired, or incorrect.')
+        throw new UnauthorizedError('The provided refresh token is either revoked, expired, or incorrect.')
       }
 
       // get JTW and refresh token expiration datetimes
@@ -111,6 +204,29 @@ module.exports = {
 
       // return JWT and refresh tokens and their expiration datetimes
       return { refreshToken: refreshToken.token, refreshTokenExpiration, token, tokenExpiration }
+    },
+
+    async verifyNewUser (root, { input: args }, { db }) {
+      const token = await db
+        .select('token', 'expires_at')
+        .where({ token: args.token, type: 'new-user-verification' })
+
+      if (!token) throw new UnauthorizedError('The provided verification token is either expired or incorrect.')
+
+      if (token.expires_at < dayjs().utc().format('YYYY-MM-DD HH:mm:ss')) {
+        throw new UnauthorizedError('The provided verification token is either expired or incorrect.')
+      }
+
+      await db('tokens')
+        .where('token', token.token)
+        .del()
+
+      return { message: 'User has been successfully verified' }
+    }
+  },
+  Query: {
+    me (root, args, context) {
+      return context.currentUser
     }
   },
   // Computed

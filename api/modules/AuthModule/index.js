@@ -13,6 +13,8 @@ module.exports = new GraphQLModule({
   resolversComposition: {
     'Query.login': [notAuthenticated()],
     'Query.me': [isAuthenticated()],
-    'Query.tokenRefresh': [notAuthenticated()]
+    'Mutation.signup': [notAuthenticated()],
+    'Query.tokenRefresh': [notAuthenticated()],
+    'Query.verifyNewUser': [notAuthenticated()]
   }
 })

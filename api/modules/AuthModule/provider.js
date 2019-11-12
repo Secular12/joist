@@ -1,3 +1,4 @@
+const AppError = require('../../errors/AppError')
 const db = require('../../../db')
 const { auth: { secret } } = require('../../../config')
 const { Injectable } = require('@graphql-modules/di')
@@ -26,9 +27,9 @@ class AuthProvider {
             'created_at',
             'updated_at'
           )
+          .from('users')
           .where('id', id)
           .whereNull('deleted_at')
-          .from('users')
           .first()
 
         currentUser.roles = await db('users_roles')
@@ -39,9 +40,9 @@ class AuthProvider {
 
         const permissions = await db
           .select('action', 'module', 'scope')
+          .from('roles_permissions')
           .whereIn('role_id', currentUser.roles.map(role => role.id))
           .whereNull('deleted_at')
-          .from('roles_permissions')
 
         // deduplicate permissions
         currentUser.permissions = uniq(permissions
