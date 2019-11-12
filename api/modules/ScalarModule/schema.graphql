@@ -1,0 +1,4 @@
+scalar Email
+scalar Password
+scalar TrimmedString
+scalar Username
