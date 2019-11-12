@@ -13,7 +13,7 @@ class AuthProvider {
       const authToken = headers.authorization.split('Bearer ')[1]
 
       await jwt.verify(authToken, secret, async (error, payload) => {
-        if (error) throw new Error(error)
+        if (error) throw new AppError(400, 'ER_JWT', error.message)
 
         const { userId: id } = payload
         currentUser = await db
@@ -51,7 +51,7 @@ class AuthProvider {
       })
 
       if (!currentUser) {
-        throw new Error('Invalid JWT Token')
+        throw new AppError(401, 'ER_INVALID_JWT', 'Invalid JWT Token')
       }
 
       return currentUser
