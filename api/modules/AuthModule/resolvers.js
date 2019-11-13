@@ -3,7 +3,6 @@ const bcrypt = require('bcrypt')
 const DatabaseError = require('../../errors/DatabaseError')
 const dayjs = require('dayjs')
 const jwt = require('jsonwebtoken')
-const UnauthorizedError = require('../../errors/UnauthorizedError')
 const uuidv4 = require('uuid/v4')
 
 module.exports = {
@@ -165,7 +164,7 @@ module.exports = {
         .first()
 
       // Throw error if refresh token doesn't exist
-      if (!refreshToken) throw new UnauthorizedError('The provided refresh token is either revoked, expired, or incorrect.')
+      if (!refreshToken) throw new AppError(401, 'ER_REFRESH_TOKEN', 'The provided refresh token is either revoked, expired, or incorrect.')
 
       // deconstruct properties of the refresh token
       const {
@@ -179,7 +178,7 @@ module.exports = {
       if (expiresAt < nowFormatted) {
         await db('tokens').where('token', refreshToken.token).del()
 
-        throw new UnauthorizedError('The provided refresh token is either revoked, expired, or incorrect.')
+        throw new AppError(401, 'ER_REFRESH_TOKEN', 'The provided refresh token is either revoked, expired, or incorrect.')
       }
 
       // revoke (soft delete) token if the token's ip and user agent do not match the current one
@@ -187,7 +186,7 @@ module.exports = {
       if (ip !== tokenIp || userAgent !== tokenUserAgent) {
         await db('tokens').update({ deleted_at: nowFormatted }).where('token', refreshToken.token)
 
-        throw new UnauthorizedError('The provided refresh token is either revoked, expired, or incorrect.')
+        throw new AppError(401, 'ER_REFRESH_TOKEN', 'The provided refresh token is either revoked, expired, or incorrect.')
       }
 
       // get JTW and refresh token expiration datetimes
@@ -211,10 +210,10 @@ module.exports = {
         .select('token', 'expires_at')
         .where({ token: args.token, type: 'new-user-verification' })
 
-      if (!token) throw new UnauthorizedError('The provided verification token is either expired or incorrect.')
+      if (!token) throw new AppError(401, 'ER_NEW_USER_VERIFICATION_TOKEN', 'The provided verification token is either expired or incorrect.')
 
       if (token.expires_at < dayjs().utc().format('YYYY-MM-DD HH:mm:ss')) {
-        throw new UnauthorizedError('The provided verification token is either expired or incorrect.')
+        throw new AppError(401, 'ER_NEW_USER_VERIFICATION_TOKEN', 'The provided verification token is either expired or incorrect.')
       }
 
       await db('tokens')
