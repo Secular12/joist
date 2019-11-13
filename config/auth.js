@@ -8,5 +8,5 @@ module.exports = {
   saltRounds: env('AUTH_SALT_ROUNDS', 10),
   secret: env('AUTH_SECRET', 'secret'),
   verificationExpirationAmount: env('AUTH_VERIFICATION_EXPIRATION_AMOUNT', 1),
-  verificationExpirationUnit: env('AUTH_VERIFICATION_EXPIRATION_AMOUNT', 'day')
+  verificationExpirationUnit: env('AUTH_VERIFICATION_EXPIRATION_UNIT', 'day')
 }
