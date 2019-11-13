@@ -83,7 +83,7 @@ module.exports = {
 
       const currentToken = await db
         .select('token')
-        .form('tokens')
+        .from('tokens')
         .where({ type: 'new-user-verification', user_id: user.id })
         .first()
 
@@ -92,7 +92,7 @@ module.exports = {
       }
 
       await db
-        .form('tokens')
+        .from('tokens')
         .where({ type: 'new-user-verification', user_id: user.id })
         .del()
 
