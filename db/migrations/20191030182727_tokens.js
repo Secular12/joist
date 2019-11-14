@@ -5,7 +5,6 @@ exports.up = async knex => {
       .notNullable()
       .primary()
     table.datetime('expires_at')
-    table.string('ip')
     table.string('type').notNullable()
     table.string('user_agent')
     table
