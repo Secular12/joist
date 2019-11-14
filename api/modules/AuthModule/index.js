@@ -12,6 +12,7 @@ module.exports = new GraphQLModule({
   resolvers,
   resolversComposition: {
     'Mutation.login': [notAuthenticated()],
+    'Mutation.reverifyNewUser': [notAuthenticated()],
     'Mutation.signup': [notAuthenticated()],
     'Mutation.tokenRefresh': [notAuthenticated()],
     'Mutation.verifyNewUser': [notAuthenticated()],

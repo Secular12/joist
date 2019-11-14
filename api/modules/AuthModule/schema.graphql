@@ -4,6 +4,7 @@ type Query {
 
 type Mutation {
   login(input: LoginInput): AuthToken!
+  reverifyNewUser(email: Email!): Message!
   signup(input: SignupInput): Message!
   tokenRefresh(refreshToken: TrimmedString!): AuthToken!
   verifyNewUser(token: String!): Message!
