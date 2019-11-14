@@ -3,7 +3,7 @@ const db = require('../../../db')
 const { auth: { secret } } = require('../../../config')
 const { Injectable } = require('@graphql-modules/di')
 const jwt = require('jsonwebtoken')
-const { uniq } = require('lodash')
+const deduplicate = require('../../../lib/js/deduplicate')
 
 class AuthProvider {
   async getCurrentUser ({ headers }) {
@@ -45,10 +45,7 @@ class AuthProvider {
           .whereNull('deleted_at')
 
         // deduplicate permissions
-        currentUser.permissions = uniq(permissions
-          .map(permission => JSON.stringify(permission))
-        )
-          .map(permission => JSON.parse(permission))
+        currentUser.permissions = deduplicate(permissions)
       })
 
       if (!currentUser) {
