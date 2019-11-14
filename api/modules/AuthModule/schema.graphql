@@ -1,7 +1,26 @@
 type Query {
-  login(uid: String!, password: String!): AuthToken!
   me: User
-  tokenRefresh(refreshToken: String!): AuthToken!
+}
+
+type Mutation {
+  login(input: LoginInput): AuthToken!
+  signup(input: SignupInput): Message!
+  tokenRefresh(refreshToken: TrimmedString!): AuthToken!
+  verifyNewUser(token: String!): Message!
+}
+
+input LoginInput {
+  uid: TrimmedString!
+  password: TrimmedString!
+}
+
+input SignupInput {
+  confirmPassword: Password!
+  email: Email!
+  firstName: TrimmedString!
+  lastName: TrimmedString!
+  password: Password!
+  username: Username!
 }
 
 type AuthToken {
@@ -9,6 +28,10 @@ type AuthToken {
   refreshTokenExpiration: String!
   token: String!
   tokenExpiration: String!
+}
+
+type Message {
+  message: String
 }
 
 type User {
