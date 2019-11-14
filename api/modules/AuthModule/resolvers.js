@@ -7,7 +7,7 @@ const uuidv4 = require('uuid/v4')
 
 module.exports = {
   Mutation: {
-    async login (root, { input: args }, { db, env: { auth }, ip, userAgent }) {
+    async login (root, { input: args }, { db, env: { auth }, userAgent }) {
       // Get user by uid
       const user = await db
         .select('id', 'password')
@@ -45,9 +45,9 @@ module.exports = {
       // Create JWT token
       const token = jwt.sign({ userId: user.id }, auth.secret, { expiresIn: `${auth.jwtExpirationAmount} ${auth.jwtExpirationUnit}` })
 
-      // delete other unrevoked refresh tokens for the user with the same ip and user-agent
+      // delete other unrevoked refresh tokens for the user with the same user-agent
       await db('tokens')
-        .where({ ip, type: 'refresh', user_agent: userAgent, user_id: user.id })
+        .where({ type: 'refresh', user_agent: userAgent, user_id: user.id })
         .whereNull('deleted_at')
         .del()
 
@@ -57,7 +57,6 @@ module.exports = {
       // save refresh token to the database
       await db('tokens')
         .insert({
-          ip,
           token: refreshToken,
           type: 'refresh',
           user_agent: userAgent,
@@ -151,14 +150,14 @@ module.exports = {
       return { message: 'Signup successful!' }
     },
 
-    async tokenRefresh (root, { input: args }, { db, env: { auth }, ip, userAgent }) {
+    async tokenRefresh (root, { input: args }, { db, env: { auth }, userAgent }) {
       // set current datetime and set a formatted version for later use
       const now = dayjs().utc()
       const nowFormatted = now.format('YYYY-MM-DD HH:mm:ss')
 
       // find refresh token in database from the one provided
       const refreshToken = await db('tokens')
-        .select('expires_at', 'ip', 'token', 'user_agent', 'user_id')
+        .select('expires_at', 'token', 'user_agent', 'user_id')
         .where({ token: args.refreshToken, type: 'refresh' })
         .whereNull('deleted_at')
         .first()
@@ -169,7 +168,6 @@ module.exports = {
       // deconstruct properties of the refresh token
       const {
         expires_at: expiresAt,
-        ip: tokenIp,
         user_agent: tokenUserAgent,
         user_id: userId
       } = refreshToken
@@ -181,9 +179,9 @@ module.exports = {
         throw new AppError(401, 'ER_REFRESH_TOKEN', 'The provided refresh token is either revoked, expired, or incorrect.')
       }
 
-      // revoke (soft delete) token if the token's ip and user agent do not match the current one
+      // revoke (soft delete) token if the token's user agent does not match the current one
       // This could be a sign of suspicious activite
-      if (ip !== tokenIp || userAgent !== tokenUserAgent) {
+      if (userAgent !== tokenUserAgent) {
         await db('tokens').update({ deleted_at: nowFormatted }).where('token', refreshToken.token)
 
         throw new AppError(401, 'ER_REFRESH_TOKEN', 'The provided refresh token is either revoked, expired, or incorrect.')

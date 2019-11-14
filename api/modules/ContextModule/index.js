@@ -12,7 +12,6 @@ module.exports = new GraphQLModule({
       currentUser,
       db,
       env,
-      ip: session.ip,
       userAgent: session.headers['user-agent']
     }
   },
