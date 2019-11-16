@@ -1,11 +1,13 @@
-const { db: {
-  client,
-  database,
-  host,
-  password,
-  timezone,
-  user
-} } = require('./config')
+const {
+  db: {
+    client,
+    database,
+    host,
+    password,
+    timezone,
+    user
+  }
+} = require('./config')
 
 module.exports = {
   client,
