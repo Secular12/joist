@@ -1,6 +1,6 @@
 {
   "name": "joist",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A GraphQL boilerplate using graphql-modules and express",
   "main": "index.js",
   "scripts": {
