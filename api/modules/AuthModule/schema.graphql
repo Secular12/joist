@@ -3,17 +3,25 @@ type Query {
 }
 
 type Mutation {
+  forgotPassword(uid: TrimmedString!): Message!
   login(input: LoginInput): AuthToken!
   reverifyNewUser(email: Email!): Message!
   signup(input: SignupInput): Message!
   tokenRefresh(refreshToken: TrimmedString!): AuthToken!
-  unverifyNewUser(token: String!): Message!
-  verifyNewUser(token: String!): Message!
+  unverifyNewUser(token: TrimmedString!): Message!
+  updatePassword(email: Email): Message!
+  verifyNewUser(token: TrimmedString!): Message!
 }
 
 input LoginInput {
   uid: TrimmedString!
   password: TrimmedString!
+}
+
+input UpdatePasswordInput {
+  confirmPassword: Password!
+  forgotPasswordToken: TrimmedString
+  password: Password!
 }
 
 input SignupInput {
