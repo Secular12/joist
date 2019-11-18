@@ -1,7 +1,6 @@
 const AppError = require('../../errors/AppError')
 const AuthProvider = require('./provider')
 const bcrypt = require('bcrypt')
-// const DatabaseError = require('../../errors/DatabaseError')
 const UserProvider = require('../UserModule/provider')
 
 module.exports = {
@@ -117,6 +116,19 @@ module.exports = {
 
       // return JWT and refresh tokens and their expiration datetimes
       return { refreshToken: refreshToken.token, refreshTokenExpiration, token, tokenExpiration }
+    },
+
+    async unverifyNewUser (root, args, { db, injector }) {
+      // find new user token by one provided
+      const token = await injector.get(AuthProvider).getNewUserToken(args.token)
+
+      // throw error if new user token could not be found
+      if (!token) throw new AppError(401, 'ER_NEW_USER_VERIFICATION_TOKEN', 'The provided verification token is incorrect.')
+
+      // delete user (it will cascade to the token)
+      await injector.get(UserProvider).deleteUserById(token.user_id)
+
+      return { message: 'User unverified and deleted!' }
     },
 
     async verifyNewUser (root, { input: args }, { db, injector }) {
