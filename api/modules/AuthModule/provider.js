@@ -1,5 +1,6 @@
 const AppError = require('../../errors/AppError')
 const { auth } = require('../../../config')
+const bcrypt = require('bcrypt')
 const dayjs = require('dayjs')
 const db = require('../../../db')
 const deduplicate = require('../../../lib/js/deduplicate')
@@ -9,6 +10,36 @@ const uuidv4 = require('uuid/v4')
 const withTrashed = require('../../../db/lib/modifiers/withTrashed')
 
 class AuthProvider {
+  async createForgotPasswordToken (userId) {
+    const forgotPasswordToken = uuidv4()
+
+    await db('tokens')
+      .insert({
+        expires_at: dayjs()
+          .utc()
+          .add(auth.verificationExpirationAmount, auth.verificationExpirationUnit)
+          .format('YYYY-MM-DD HH:mm:ss'),
+        token: forgotPasswordToken,
+        type: 'forgot-password',
+        user_id: userId
+      })
+  }
+
+  async createNewUserToken (userId) {
+    const newUserVerificationToken = uuidv4()
+
+    await db('tokens')
+      .insert({
+        expires_at: dayjs()
+          .utc()
+          .add(auth.verificationExpirationAmount, auth.verificationExpirationUnit)
+          .format('YYYY-MM-DD HH:mm:ss'),
+        token: newUserVerificationToken,
+        type: 'new-user-verification',
+        user_id: userId
+      })
+  }
+
   async createRefreshToken (userId, userAgent) {
     const refreshToken = uuidv4()
     const refreshTokenExpiration = dayjs()
@@ -29,29 +60,14 @@ class AuthProvider {
     return { refreshToken, refreshTokenExpiration }
   }
 
-  async createNewUserToken (userId) {
-    const newUserVerificationToken = uuidv4()
-
+  async deleteTokensByUserId (type, userId, includeTrashed) {
     await db('tokens')
-      .insert({
-        expires_at: dayjs()
-          .utc()
-          .add(auth.verificationExpirationAmount, auth.verificationExpirationUnit)
-          .format('YYYY-MM-DD HH:mm:ss'),
-        token: newUserVerificationToken,
-        type: 'new-user-verification',
-        user_id: userId
-      })
-  }
-
-  async deleteNewUserTokens (userId, includeTrashed) {
-    await db('tokens')
-      .where({ type: 'new-user-verification', user_id: userId })
+      .where({ type, user_id: userId })
       .modify(withTrashed, includeTrashed)
       .del()
   }
 
-  async deleteRefreshTokens (userId, userAgent, includeTrashed) {
+  async deleteRefreshTokensByUserId (userId, userAgent, includeTrashed) {
     await db('tokens')
       .where({ type: 'refresh', user_agent: userAgent, user_id: userId })
       .modify(withTrashed, includeTrashed)
@@ -123,26 +139,18 @@ class AuthProvider {
     return null
   }
 
-  async getNewUserToken (newUserToken, includeTrashed) {
-    return db('tokens')
-      .select()
-      .where({ token: newUserToken, type: 'new-user-verification' })
-      .modify(withTrashed, includeTrashed)
-      .first()
-  }
-
   async getNewUserTokenByUserId (userId, includeTrashed) {
     return db('tokens')
       .select()
-      .where({ type: 'new-user-validation', user_id: userId })
+      .where({ type: 'new-user-verification', user_id: userId })
       .modify(withTrashed, includeTrashed)
       .first()
   }
 
-  async getRefreshToken (refreshToken, includeTrashed) {
+  async getToken (token, includeTrashed) {
     return db('tokens')
       .select()
-      .where({ token: refreshToken, type: 'refresh' })
+      .where({ token })
       .modify(withTrashed, includeTrashed)
       .first()
   }
@@ -156,6 +164,12 @@ class AuthProvider {
       .update({ deleted_at: dayjs().utc().format('YYYY-MM-DD HH:mm:ss') })
       .where('token', refreshToken)
       .modify(withTrashed, includeTrashed)
+  }
+
+  async updatePassword (userId, password) {
+    await db('users')
+      .update({ password: await bcrypt.hash(password, auth.saltRounds) })
+      .where('id', userId)
   }
 
   async updateRefreshTokenExpiration (refreshToken, includeTrashed) {

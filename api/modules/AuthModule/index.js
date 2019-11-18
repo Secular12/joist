@@ -17,10 +17,13 @@ module.exports = new GraphQLModule({
   typeDefs,
   resolvers,
   resolversComposition: {
+    'Mutation.forgotPassword': [notAuthenticated()],
     'Mutation.login': [notAuthenticated()],
     'Mutation.reverifyNewUser': [notAuthenticated()],
     'Mutation.signup': [notAuthenticated()],
     'Mutation.tokenRefresh': [notAuthenticated()],
+    'Mutation.unverifyNewUser': [notAuthenticated()],
+    'Mutation.updatePassword': [],
     'Mutation.verifyNewUser': [notAuthenticated()],
     'Query.me': [isAuthenticated()]
   }
