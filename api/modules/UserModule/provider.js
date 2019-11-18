@@ -3,7 +3,7 @@ const { auth } = require('../../../config')
 const DatabaseError = require('../../errors/DatabaseError')
 const db = require('../../../db')
 const { Injectable } = require('@graphql-modules/di')
-const softDelete = require('../../../db/lib/modifiers/softDelete')
+const withTrashed = require('../../../db/lib/modifiers/withTrashed')
 
 class UserProvider {
   async createUser (userData) {
@@ -25,25 +25,28 @@ class UserProvider {
     return newUser
   }
 
-  async getUsers (includeSoftDelete) {
-    return db.select().from('users').modify(softDelete, includeSoftDelete)
+  async deleteUserById (userId) {
+    await db('users').where('id', userId).del()
   }
 
-  async getUserBy (conditions, includeSoftDelete) {
-    return db.select().from('users').where(conditions).modify(softDelete, includeSoftDelete).first()
+  async getUsers (includeTrashed) {
+    return db('users').select().modify(withTrashed, includeTrashed)
   }
 
-  async getUserById (id, includeSoftDelete) {
-    return db.select().from('users').where('id', id).modify(softDelete, includeSoftDelete).first()
+  async getUserBy (conditions, includeTrashed) {
+    return db('users').select().where(conditions).modify(withTrashed, includeTrashed).first()
   }
 
-  async getUserByUid (uid, includeSoftDelete) {
-    return db
+  async getUserById (id, includeTrashed) {
+    return db('users').select().where('id', id).modify(withTrashed, includeTrashed).first()
+  }
+
+  async getUserByUid (uid, includeTrashed) {
+    return db('users')
       .select()
-      .from('users')
       .where('email', uid)
       .orWhere('username', uid)
-      .modify(softDelete, includeSoftDelete)
+      .modify(withTrashed, includeTrashed)
       .first()
   }
 }

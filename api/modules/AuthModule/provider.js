@@ -6,7 +6,7 @@ const deduplicate = require('../../../lib/js/deduplicate')
 const { Injectable } = require('@graphql-modules/di')
 const jwt = require('jsonwebtoken')
 const uuidv4 = require('uuid/v4')
-const softDelete = require('../../../db/lib/modifiers/softDelete')
+const withTrashed = require('../../../db/lib/modifiers/withTrashed')
 
 class AuthProvider {
   async createRefreshToken (userId, userAgent) {
@@ -44,23 +44,22 @@ class AuthProvider {
       })
   }
 
-  async deleteNewUserTokens (userId, includeSoftDelete) {
-    await db
-      .from('tokens')
+  async deleteNewUserTokens (userId, includeTrashed) {
+    await db('tokens')
       .where({ type: 'new-user-verification', user_id: userId })
-      .modify(softDelete, includeSoftDelete)
+      .modify(withTrashed, includeTrashed)
       .del()
   }
 
-  async deleteRefreshTokens (userId, userAgent, includeSoftDelete) {
+  async deleteRefreshTokens (userId, userAgent, includeTrashed) {
     await db('tokens')
       .where({ type: 'refresh', user_agent: userAgent, user_id: userId })
-      .modify(softDelete, includeSoftDelete)
+      .modify(withTrashed, includeTrashed)
       .del()
   }
 
-  async deleteToken (token, includeSoftDelete) {
-    await db('tokens').where('token', token).modify(softDelete, includeSoftDelete).del()
+  async deleteToken (token, includeTrashed) {
+    await db('tokens').where('token', token).modify(withTrashed, includeTrashed).del()
   }
 
   generateJwtToken (userId) {
@@ -85,7 +84,7 @@ class AuthProvider {
         if (error) throw new AppError(400, 'ER_JWT', error.message)
 
         const { userId: id } = payload
-        currentUser = await db
+        currentUser = await db('users')
           .select(
             'id',
             'email',
@@ -95,7 +94,6 @@ class AuthProvider {
             'created_at',
             'updated_at'
           )
-          .from('users')
           .where('id', id)
           .whereNull('deleted_at')
           .first()
@@ -106,9 +104,8 @@ class AuthProvider {
           .where('users_roles.user_id', id)
           .whereNull('roles.deleted_at')
 
-        const permissions = await db
+        const permissions = await db('roles_permissions')
           .select('action', 'module', 'scope')
-          .from('roles_permissions')
           .whereIn('role_id', currentUser.roles.map(role => role.id))
           .whereNull('deleted_at')
 
@@ -126,27 +123,27 @@ class AuthProvider {
     return null
   }
 
-  async getNewUserToken (newUserToken, includeSoftDelete) {
-    return db
-      .select('token', 'expires_at')
+  async getNewUserToken (newUserToken, includeTrashed) {
+    return db('tokens')
+      .select()
       .where({ token: newUserToken, type: 'new-user-verification' })
-      .modify(softDelete, includeSoftDelete)
-  }
-
-  async getNewUserTokenByUserId (userId, includeSoftDelete) {
-    return db
-      .select('token')
-      .from('tokens')
-      .where({ type: 'new-user-validation', user_id: userId })
-      .modify(softDelete, includeSoftDelete)
+      .modify(withTrashed, includeTrashed)
       .first()
   }
 
-  async getRefreshToken (refreshToken, includeSoftDelete) {
+  async getNewUserTokenByUserId (userId, includeTrashed) {
+    return db('tokens')
+      .select()
+      .where({ type: 'new-user-validation', user_id: userId })
+      .modify(withTrashed, includeTrashed)
+      .first()
+  }
+
+  async getRefreshToken (refreshToken, includeTrashed) {
     return db('tokens')
       .select()
       .where({ token: refreshToken, type: 'refresh' })
-      .modify(softDelete, includeSoftDelete)
+      .modify(withTrashed, includeTrashed)
       .first()
   }
 
@@ -154,14 +151,14 @@ class AuthProvider {
     return token.expires_at < dayjs().utc().format('YYYY-MM-DD HH:mm:ss')
   }
 
-  async revokeRefreshToken (refreshToken, includeSoftDelete) {
+  async revokeRefreshToken (refreshToken, includeTrashed) {
     await db('tokens')
       .update({ deleted_at: dayjs().utc().format('YYYY-MM-DD HH:mm:ss') })
       .where('token', refreshToken)
-      .modify(softDelete, includeSoftDelete)
+      .modify(withTrashed, includeTrashed)
   }
 
-  async updateRefreshTokenExpiration (refreshToken, includeSoftDelete) {
+  async updateRefreshTokenExpiration (refreshToken, includeTrashed) {
     const refreshTokenExpiration = dayjs()
       .utc()
       .add(auth.refreshExpirationAmount, auth.refreshExpirationUnit)
@@ -170,7 +167,7 @@ class AuthProvider {
     await db('tokens')
       .update({ expires_at: refreshTokenExpiration })
       .where('token', refreshToken)
-      .modify(softDelete, includeSoftDelete)
+      .modify(withTrashed, includeTrashed)
 
     return refreshTokenExpiration
   }

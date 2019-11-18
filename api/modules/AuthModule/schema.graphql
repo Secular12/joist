@@ -7,6 +7,7 @@ type Mutation {
   reverifyNewUser(email: Email!): Message!
   signup(input: SignupInput): Message!
   tokenRefresh(refreshToken: TrimmedString!): AuthToken!
+  unverifyNewUser(token: String!): Message!
   verifyNewUser(token: String!): Message!
 }
 
