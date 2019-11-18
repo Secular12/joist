@@ -1,12 +1,12 @@
 exports.up = async knex => {
   await knex.schema.createTable('tokens', table => {
-    table.increments()
     table
       .string('token')
       .notNullable()
-      .unique()
-      .index()
+      .primary()
+    table.datetime('expires_at')
     table.string('type').notNullable()
+    table.string('user_agent')
     table
       .integer('user_id')
       .unsigned()
