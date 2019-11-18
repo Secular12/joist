@@ -1,30 +1,20 @@
 const AppError = require('../../errors/AppError')
+const AuthProvider = require('./provider')
 const bcrypt = require('bcrypt')
-const DatabaseError = require('../../errors/DatabaseError')
-const dayjs = require('dayjs')
-const jwt = require('jsonwebtoken')
-const uuidv4 = require('uuid/v4')
+// const DatabaseError = require('../../errors/DatabaseError')
+const UserProvider = require('../UserModule/provider')
 
 module.exports = {
   Mutation: {
-    async login (root, { input: args }, { db, env: { auth }, userAgent }) {
+    async login (root, { input: args }, { db, env: { auth }, injector, userAgent }) {
       // Get user by uid
-      const user = await db
-        .select('id', 'password')
-        .from('users')
-        .where('email', args.uid)
-        .orWhere('username', args.uid)
-        .first()
+      const user = await injector.get(UserProvider).getUserByUid(args.uid)
 
       // Throw error if cannot find user by uid
       if (!user) throw new AppError(400, 'ER_LOGIN', 'Username/email or password is not correct')
 
       // get new user validation token, in case one exists
-      const newUserToken = await db
-        .select('token')
-        .from('tokens')
-        .where({ type: 'new-user-validation', user_id: user.id })
-        .first()
+      const newUserToken = await injector.get(AuthProvider).getNewUserTokenByUserId(user.id)
 
       // Throw error if there is a new user validation token
       if (newUserToken) {
@@ -37,187 +27,114 @@ module.exports = {
       // Throw error if passwords do not match
       if (!passwordMatch) throw new AppError(400, 'ER_LOGIN', 'Username/email or password is not correct')
 
-      // get JTW and refresh token expiration datetimes
-      const now = dayjs().utc()
-      const refreshTokenExpiration = now.add(auth.refreshExpirationAmount, auth.refreshExpirationUnit).format('YYYY-MM-DD HH:mm:ss')
-      const tokenExpiration = now.add(auth.jwtExpirationAmount, auth.jwtExpirationUnit).format('YYYY-MM-DD HH:mm:ss')
-
-      // Create JWT token
-      const token = jwt.sign({ userId: user.id }, auth.secret, { expiresIn: `${auth.jwtExpirationAmount} ${auth.jwtExpirationUnit}` })
+      // Generate JWT token
+      const { token, tokenExpiration } = injector.get(AuthProvider).generateJwtToken(user.id)
 
       // delete other unrevoked refresh tokens for the user with the same user-agent
-      await db('tokens')
-        .where({ type: 'refresh', user_agent: userAgent, user_id: user.id })
-        .whereNull('deleted_at')
-        .del()
+      await injector.get(AuthProvider).deleteRefreshTokens(user.id, userAgent)
 
-      // Generate a new refresh token
-      const refreshToken = uuidv4()
-
-      // save refresh token to the database
-      await db('tokens')
-        .insert({
-          token: refreshToken,
-          type: 'refresh',
-          user_agent: userAgent,
-          user_id: user.id,
-          expires_at: refreshTokenExpiration
-        })
+      // Create Refresh Token
+      const { refreshToken, refreshTokenExpiration } = await injector.get(AuthProvider).createRefreshTokens(user.id, userAgent)
 
       // return JWT and refresh tokens and their expiration datetimes
       return { refreshToken, refreshTokenExpiration, token, tokenExpiration }
     },
 
-    async reverifyNewUser (root, { input }, { db, env: { auth } }) {
-      const user = await db
-        .select('id')
-        .from('users')
-        .where({ email: input.email })
-        .first()
+    async reverifyNewUser (root, { input }, { db, env: { auth }, injector }) {
+      // Get user by email
+      const user = await injector.get(UserProvider).getUserBy({ email: input.email })
 
+      // Throw error if could not find user by email
       if (!user) {
         throw new AppError(400, 'ER_ACCOUNT_NOT_FOUND', 'There is no user found with the provided email')
       }
 
-      const currentToken = await db
-        .select('token')
-        .from('tokens')
-        .where({ type: 'new-user-verification', user_id: user.id })
-        .first()
+      // gFind new user verification token by user
+      const currentToken = await injector.get(AuthProvider).getNewUserTokenByUserId(user.id)
 
+      // Throw error if no new user verification token exists, as that only occurs if they are already verified
       if (!currentToken) {
         throw new AppError(400, 'ER_ALREADY_VERIFIED', 'A user with this email has already been verified')
       }
 
-      await db
-        .from('tokens')
-        .where({ type: 'new-user-verification', user_id: user.id })
-        .del()
+      // Delete any current new user verification tokens, including any that may have been revoked
+      await injector.get(AuthProvider).deleteNewUserTokens(user.id, -1)
 
-      const newUserVerificationToken = uuidv4()
-
-      await db('tokens')
-        .insert({
-          expires_at: dayjs()
-            .utc()
-            .add(auth.verificationExpirationAmount, auth.verificationExpirationUnit)
-            .format('YYYY-MM-DD HH:mm:ss'),
-          token: newUserVerificationToken,
-          type: 'new-user-validation',
-          user_id: user.id
-        })
+      // Create another new user verification tokens
+      await injector.get(AuthProvider).createNewUserToken(user.id)
 
       // @TODO: Send Reverification email.
 
+      // return message indication reverification has completed
       return { message: 'Reverification email sent!' }
     },
 
-    async signup (root, { input }, { db, env: { auth } }) {
+    async signup (root, { input }, { db, env: { auth }, injector }) {
+      // Throw error if password and confirm password do not match
       if (input.password !== input.confirmPassword) {
         throw new AppError(400, 'ER_MATCH_PASSWORDS', 'password and confirm password do not match')
       }
 
-      let newUser
+      // create new user with provided data
+      const newUser = await injector.get(UserProvider).createUser(input)
 
-      try {
-        newUser = await db('users')
-          .insert({
-            email: input.email,
-            first_name: input.firstName,
-            last_name: input.lastName,
-            password: await bcrypt.hash(input.password, auth.saltRounds),
-            username: input.username
-          })
-      } catch (error) {
-        throw new DatabaseError(400, error)
-      }
-
-      const newUserVerificationToken = uuidv4()
-
-      await db('tokens')
-        .insert({
-          expires_at: dayjs()
-            .utc()
-            .add(auth.verificationExpirationAmount, auth.verificationExpirationUnit)
-            .format('YYYY-MM-DD HH:mm:ss'),
-          token: newUserVerificationToken,
-          type: 'new-user-validation',
-          user_id: newUser[0]
-        })
+      // create new user token
+      await injector.get(AuthProvider).createNewUserToken(newUser[0])
 
       // @TODO: Send verification email
 
+      // return message indicating that sign up was successful
       return { message: 'Signup successful!' }
     },
 
-    async tokenRefresh (root, { input: args }, { db, env: { auth }, userAgent }) {
-      // set current datetime and set a formatted version for later use
-      const now = dayjs().utc()
-      const nowFormatted = now.format('YYYY-MM-DD HH:mm:ss')
-
+    async tokenRefresh (root, { input: args }, { db, env: { auth }, injector, userAgent }) {
       // find refresh token in database from the one provided
-      const refreshToken = await db('tokens')
-        .select('expires_at', 'token', 'user_agent', 'user_id')
-        .where({ token: args.refreshToken, type: 'refresh' })
-        .whereNull('deleted_at')
-        .first()
+      const refreshToken = await injector.get(AuthProvider).getRefreshToken(args.refreshToken)
 
       // Throw error if refresh token doesn't exist
       if (!refreshToken) throw new AppError(401, 'ER_REFRESH_TOKEN', 'The provided refresh token is either revoked, expired, or incorrect.')
 
-      // deconstruct properties of the refresh token
-      const {
-        expires_at: expiresAt,
-        user_agent: tokenUserAgent,
-        user_id: userId
-      } = refreshToken
-
       // delete token and return error if token is expired
-      if (expiresAt < nowFormatted) {
-        await db('tokens').where('token', refreshToken.token).del()
+      if (injector.get(AuthProvider).isTokenExpired(refreshToken)) {
+        await injector.get(AuthProvider).deleteToken(args.refreshToken)
 
         throw new AppError(401, 'ER_REFRESH_TOKEN', 'The provided refresh token is either revoked, expired, or incorrect.')
       }
 
       // revoke (soft delete) token if the token's user agent does not match the current one
       // This could be a sign of suspicious activite
-      if (userAgent !== tokenUserAgent) {
-        await db('tokens').update({ deleted_at: nowFormatted }).where('token', refreshToken.token)
+      if (userAgent !== refreshToken.user_agent) {
+        await injector.get(AuthProvider).revokeRefreshToken(args.refreshToken)
 
         throw new AppError(401, 'ER_REFRESH_TOKEN', 'The provided refresh token is either revoked, expired, or incorrect.')
       }
 
-      // get JTW and refresh token expiration datetimes
-      const tokenExpiration = now.add(auth.jwtExpirationAmount, auth.jwtExpirationUnit).format('YYYY-MM-DD HH:mm:ss')
-      const refreshTokenExpiration = now.add(auth.refreshExpirationAmount, auth.refreshExpirationUnit).format('YYYY-MM-DD HH:mm:ss')
-
       // Update expiration datetime of the refresh token
-      await db('tokens')
-        .update({ expires_at: refreshTokenExpiration })
-        .where('token', refreshToken.token)
+      const refreshTokenExpiration = await injector.get(AuthProvider).updateRefreshTokenExpiration(args.refreshToken)
 
       // get the JWT token
-      const token = jwt.sign({ userId }, auth.secret, { expiresIn: `${auth.jwtExpirationAmount} ${auth.jwtExpirationUnit}` })
+      const { token, tokenExpiration } = injector.get(AuthProvider).generateJwtToken(refreshToken.user_id)
 
       // return JWT and refresh tokens and their expiration datetimes
       return { refreshToken: refreshToken.token, refreshTokenExpiration, token, tokenExpiration }
     },
 
-    async verifyNewUser (root, { input: args }, { db }) {
-      const token = await db
-        .select('token', 'expires_at')
-        .where({ token: args.token, type: 'new-user-verification' })
+    async verifyNewUser (root, { input: args }, { db, injector }) {
+      // find new user token by one provided
+      const token = await injector.get(AuthProvider).getNewUserToken(args.token)
 
+      // throw error if new user token could not be found
       if (!token) throw new AppError(401, 'ER_NEW_USER_VERIFICATION_TOKEN', 'The provided verification token is either expired or incorrect.')
 
-      if (token.expires_at < dayjs().utc().format('YYYY-MM-DD HH:mm:ss')) {
+      // throw error if new user token is expired
+      if (injector.get(AuthProvider).isTokenExpired(token)) {
         throw new AppError(401, 'ER_NEW_USER_VERIFICATION_TOKEN', 'The provided verification token is either expired or incorrect.')
       }
 
-      await db('tokens')
-        .where('token', token.token)
-        .del()
+      // delete new user token
+      await injector.get(AuthProvider).deleteToken(token)
 
+      // return message that user has been verified
       return { message: 'User has been successfully verified' }
     }
   },
