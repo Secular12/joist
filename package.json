@@ -1,7 +1,7 @@
 {
   "name": "joist",
-  "version": "0.0.1",
-  "description": "A GraphQL boilerplate using grapql-modules and express",
+  "version": "0.0.3",
+  "description": "A GraphQL boilerplate using graphql-modules and express",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
