@@ -15,6 +15,7 @@ module.exports = {
     pattern: /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/,
     trim: true
   }),
+
   Password: GraphQLInputString({
     error (info) {
       if (info.type === 'pattern') {
@@ -28,10 +29,12 @@ module.exports = {
     pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])/,
     trim: true
   }),
+
   TrimmedString: GraphQLInputString({
     name: 'TrimmedString',
     trim: true
   }),
+
   Username: GraphQLInputString({
     error (info) {
       if (info.type === 'pattern') {
